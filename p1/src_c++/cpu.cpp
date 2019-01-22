@@ -2,7 +2,6 @@
 
 #include "cpu.h"
 #include "address.h"
-#include "ram.h"
 #include "cache.h"
 #include <iostream>
 #include <string>

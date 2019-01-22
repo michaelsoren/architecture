@@ -9,10 +9,6 @@
 
 /* Ram implementation */
 
-int main() {
-  return 0;
-}
-
 /*
  * Basic constructor for ram
  */

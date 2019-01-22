@@ -1,7 +1,7 @@
 all: cache-sim
 
-cache-sim: cache-sim.o cpu.o cache.o ram.o datablock.o address.o
-	g++ -o cache-sim cache-sim.o cpu.o cache.o ram.o datablock.o address.o
+cache-sim: cache-sim.o cpu.o address.o datablock.o ram.o cache.o
+	g++ -o cache-sim cache-sim.o cpu.o address.o datablock.o ram.o cache.o
 
 cache-sim.o: cache-sim.cpp cpu.h
 	g++ -c cache-sim.cpp
@@ -12,7 +12,7 @@ address.o: address.cpp address.h
 cache.o: cache.cpp ram.h datablock.h address.h
 	g++ -c cache.cpp
 
-cpu.o: cpu.cpp cpu.h cache.h ram.h address.h
+cpu.o: cpu.cpp cpu.h cache.h address.h
 	g++ -c cpu.cpp
 
 datablock.o: datablock.cpp datablock.h
