@@ -21,10 +21,6 @@ Address::Address(int newAddr, int newAddrBits, int newNumSets, int newNumBlocks)
   calcNumBlockOffsetBits();
   calcNumSetBits();
   calcNumTagBits();
-  std::cout << "\nnumSetBits: " << numSetBits;
-  std::cout << "\nnumBlockOffsetBits: " << numBlockOffsetBits;
-  std::cout << "\nnumTagBits: " << numTagBits;
-
 }
 
 

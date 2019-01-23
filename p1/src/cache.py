@@ -5,6 +5,7 @@ import random as rand
 import datablock
 import ram
 import address
+import copy
 
 class Cache:
 
@@ -19,22 +20,18 @@ class Cache:
         self.replacementPolicy = replacementPolicy
         self.writePolicy = writePolicy
         #Cache storage. Tuple is in order: Block, valid bit, tag, dirty bit
-        self.blocks =
+        self.blocks = \
             np.empty((numSets, numBlocksPerSet), dtype=datablock.Datablock)
-        for setId in range(numSets):
-            for blockId in range(numBlocksPerSet):
-                self.blocks[setId][blockId] = datablock.Datablock(blockSize, -1)
+
         self.validBits = np.zeros((numSets, numBlocksPerSet), dtype=bool)
         self.tags = np.zeros((numSets, numBlocksPerSet), dtype=int)
-        self.dirtyBits = np.zeros((numSets, numBlocksPerSet), dtype=bool)
+        #self.dirtyBits = np.zeros((numSets, numBlocksPerSet), dtype=bool)
 
         #https://stackoverflow.com/questions/29806226/list-of-variable-length-lists
-        self.lruQueue = lists = [[] for _ in range(numSets)]
-        self.fifoQueue = lists = [[] for _ in range(numSets)]
+        #queue used for both fifo and lru. It stores addresses.
+        self.queue = lists = [[] for _ in range(numSets)]
 
         self.ram = ram.Ram(ramSize, blockSize)
-
-        self.blockSize = blockSize
 
         #counting info
         self.countingInfo = {}
@@ -60,7 +57,7 @@ class Cache:
         """
         blockAtAddr = self.getBlock(addr, "write")
 
-        blockAtAddr.valid = True
+        #blockAtAddr.valid = True
         blockAtAddr.data[addr.getOffset()] = value
         self.setBlock(addr, blockAtAddr)
 
@@ -79,8 +76,9 @@ class Cache:
         #search cache for independent block
         foundTagInCache = False
         blockSearchIndex = 0
-        while blockSearchIndex < self.blocks.shape[1] and not foundTagInCache:
-            if self.validBits[addrSetIndex][blockSearchIndex] and
+        dimension = self.blocks.shape[1]
+        while blockSearchIndex < dimension and not foundTagInCache:
+            if self.validBits[addrSetIndex][blockSearchIndex] and \
                self.tags[addrSetIndex][blockSearchIndex] == addrTag:
                 foundTagInCache = True
             else:
@@ -96,7 +94,7 @@ class Cache:
             #look for empty slot to put block in
             foundEmptyValidSlot = False
             emptySearchIndex = 0
-            while emptySearchIndex < self.blocks.shape[1] and not
+            while emptySearchIndex < dimension and not \
                   foundEmptyValidSlot:
                 if not self.validBits[addrSetIndex][emptySearchIndex]:
                     foundEmptyValidSlot = True
@@ -107,12 +105,12 @@ class Cache:
                 self.blocks[addrSetIndex][emptySearchIndex] = missingBlock
                 self.validBits[addrSetIndex][emptySearchIndex] = True
                 self.tags[addrSetIndex][emptySearchIndex] = addrTag
-                self.dirtyBits[addrSetIndex][emptySearchIndex] = False
+                #self.dirtyBits[addrSetIndex][emptySearchIndex] = False
                 #update the lru and fifo queues, if necessary
                 if self.replacementPolicy == "lru":
-                    self.lruQueue[addrSetIndex].append(addr)
+                    self.queue[addrSetIndex].append(copy.deepcopy(addr))
                 elif self.replacementPolicy == "fifo":
-                    self.fifoQueue[addrSetIndex].append(addr)
+                    self.queue[addrSetIndex].append(copy.deepcopy(addr))
             else:
                 #did not find empty valid slot, must evict a block.
                 if self.replacementPolicy == "lru":
@@ -122,21 +120,21 @@ class Cache:
                 else:
                     rm = rand.randint(0, self.numBlocksPerSet - 1)
                     #check if dirty and write if so
-                    if self.dirtyBits[addrSetIndex][rm]:
-                        reconstructedAddrVal =
-                            (self.tags[addrSetIndex][rm] <<
-                            (addr.numSetBits + addr.numBlockOffsetBits)) +
+                    '''if self.dirtyBits[addrSetIndex][rm]:
+                        reconstructedAddrVal = \
+                            (self.tags[addrSetIndex][rm] << \
+                            (addr.numSetBits + addr.numBlockOffsetBits)) + \
                             (addrSetIndex << (addr.numBlockOffsetBits))
                         reconstructedAddr = address.Address(reconstructedAddrVal,
                                                             addr.addrBits,
                                                             addr.numSets,
                                                             addr.numBlocks)
                         self.ram.setBlock(reconstructedAddr,
-                                          self.blocks[addrSetIndex][rm])
+                                          self.blocks[addrSetIndex][rm])'''
                     self.blocks[addrSetIndex][rm] = missingBlock
                     self.validBits[addrSetIndex][rm] = True
                     self.tags[addrSetIndex][rm] = addrTag
-                    self.dirtyBits[addrSetIndex][rm] = False
+                    #self.dirtyBits[addrSetIndex][rm] = False
             return missingBlock
         else:
             #Found the block in the cache, update info and return it
@@ -162,7 +160,7 @@ class Cache:
         foundTagInCache = False
         blockSearchIndex = 0
         while blockSearchIndex < self.blocks.shape[1] and not foundTagInCache:
-            if self.validBits[addrSetIndex][blockSearchIndex] and
+            if self.validBits[addrSetIndex][blockSearchIndex] and \
                self.tags[addrSetIndex][blockSearchIndex] == addrTag:
                 foundTagInCache = True
             else:
@@ -174,34 +172,36 @@ class Cache:
         self.blocks[addrSetIndex][blockSearchIndex] = block
         self.validBits[addrSetIndex][blockSearchIndex] = True
         self.tags[addrSetIndex][blockSearchIndex] = addrTag
-        if self.writePolicy != "write_through":
-            self.dirtyBits[addrSetIndex][blockSearchIndex] = True
-        else:
-            self.dirtyBits[addrSetIndex][blockSearchIndex] = False
-            self.ram.setBlock(addr, block)
+        #if self.writePolicy != "write_through":
+        #    self.dirtyBits[addrSetIndex][blockSearchIndex] = True
+        #else:
+        #    self.dirtyBits[addrSetIndex][blockSearchIndex] = False
+        #    self.ram.setBlock(addr, block)
 
 
     def updateBlocksAndFifo(self, addrSetIndex, addr, missingBlock):
         """updates both cache memory and the fifo queue for the given
         address and missing block
         """
-        oldAddr = self.fifoQueue[addrSetIndex].pop(0)
+        oldAddr = self.queue[addrSetIndex].pop(0)
         rmAddrTag = oldAddr.getTag()
         #find the block to remove
         searchIndex = 0
-        while searchIndex < self.numBlocksPerSet and
-              self.tags[addrSetIndex][searchIndex] != rmAddrTag:
+        numBlocksPerSet = self.numBlocksPerSet
+        tags = self.tags
+        while searchIndex < numBlocksPerSet and \
+              tags[addrSetIndex][searchIndex] != rmAddrTag:
             searchIndex += 1
         #check if block is dirty and write if so
-        if self.dirtyBits[addrSetIndex][searchIndex]:
-            self.ram.setBlock(oldAddr, self.blocks[addrSetIndex][searchIndex])
+        #if self.dirtyBits[addrSetIndex][searchIndex]:
+        #    self.ram.setBlock(oldAddr, self.blocks[addrSetIndex][searchIndex])
         #remove old block
         self.blocks[addrSetIndex][searchIndex] = missingBlock
         self.validBits[addrSetIndex][searchIndex] = True
         self.tags[addrSetIndex][searchIndex] = addr.getTag()
-        self.dirtyBits[addrSetIndex][searchIndex] = False
+        #self.dirtyBits[addrSetIndex][searchIndex] = False
         #append new address to back of queue
-        self.fifoQueue[addrSetIndex].append(addr)
+        self.queue[addrSetIndex].append(copy.deepcopy(addr))
         #self.printFifo()
 
 
@@ -210,27 +210,29 @@ class Cache:
         address and missing block.
         """
         #remove from back, least recently used
-        oldAddr = self.lruQueue[addrSetIndex].pop(0)
+        oldAddr = self.queue[addrSetIndex].pop(0)
 
         rmAddrTag = oldAddr.getTag()
         #find block to remove in blocks
         searchIndex = 0
-        while searchIndex < self.numBlocksPerSet and
-              self.tags[addrSetIndex][searchIndex] != rmAddrTag:
+        numBlocksPerSet = self.numBlocksPerSet
+        tags = self.tags
+        while searchIndex < numBlocksPerSet and \
+              tags[addrSetIndex][searchIndex] != rmAddrTag:
             searchIndex += 1
 
         #check if block is dirty and write if so
-        if self.dirtyBits[addrSetIndex][searchIndex]:
-            self.ram.setBlock(oldAddr, self.blocks[addrSetIndex][searchIndex])
+        #if self.dirtyBits[addrSetIndex][searchIndex]:
+        #    self.ram.setBlock(oldAddr, self.blocks[addrSetIndex][searchIndex])
 
         #remove old block
         self.blocks[addrSetIndex][searchIndex] = missingBlock
         self.validBits[addrSetIndex][searchIndex] = True
         self.tags[addrSetIndex][searchIndex] = addr.getTag()
-        self.dirtyBits[addrSetIndex][searchIndex] = False
+        #self.dirtyBits[addrSetIndex][searchIndex] = False
 
         #Put on top since it is most recently used
-        self.lruQueue[addrSetIndex].append(addr)
+        self.queue[addrSetIndex].append(copy.deepcopy(addr))
 
 
     def updateLruHit(self, addrSetIndex, addr):
@@ -239,10 +241,17 @@ class Cache:
         back a spot
         """
         addrTag = addr.getTag()
-
-        self.lruQueue[addrSetIndex] =
-            [x for x in self.lruQueue[addrSetIndex] if x.getTag() != addrTag]
-        self.lruQueue[addrSetIndex].append(addr)
+        done = False
+        index = 0
+        for i, tempAddr in enumerate(self.queue[addrSetIndex]):
+            if done:
+                break
+            if tempAddr.getTag() == addrTag:
+                index = i
+                done = True
+        tempAddr = self.queue[addrSetIndex][-1]
+        self.queue[addrSetIndex][-1] = self.queue[addrSetIndex][index]
+        self.queue[addrSetIndex][index] = tempAddr
 
 
     def getCacheCountingInfo(self):
@@ -257,7 +266,7 @@ class Cache:
         print("LRU Queue:")
         for setIndex in range(self.numSets):
             print("\tsetIndex:", setIndex)
-            for address in self.lruQueue[setIndex]:
+            for address in self.queue[setIndex]:
                 print("\t\taddress:", address.addr)
 
 
@@ -266,7 +275,7 @@ class Cache:
         print("Fifo Queue:")
         for setIndex in range(self.numSets):
             print("\tsetIndex:", setIndex)
-            for address in self.fifoQueue[setIndex]:
+            for address in self.queue[setIndex]:
                 print("\t\taddress:", address.addr)
 
 
@@ -276,4 +285,5 @@ class Cache:
         for setId in range(self.numSets):
             print("\tSetId", setId)
             for blockId in range(self.numBlocksPerSet):
-                print("\t\tblockId", blockId, self.blocks[setId][blockId].id, self.validBits[setId][blockId], self.tags[setId][blockId])
+                print("\t\tblockId", blockId, self.blocks[setId][blockId].id,
+                      self.validBits[setId][blockId], self.tags[setId][blockId])
