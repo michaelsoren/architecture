@@ -8,6 +8,9 @@ import cython_address
 import copy
 
 class Cache:
+    """NOTE: Originally written to also be write back if needed. However,
+             those checks were harming performance and I needed to eke out
+             as much performance as I could."""
 
     def __init__(self, numSets, numBlocksPerSet,
                  replacementPolicy, writePolicy, blockSize, ramSize, addrObj):
@@ -27,6 +30,7 @@ class Cache:
         self.tags = np.zeros((numSets, numBlocksPerSet), dtype=int)
         #self.dirtyBits = np.zeros((numSets, numBlocksPerSet), dtype=bool)
 
+        #citing source:
         #https://stackoverflow.com/questions/29806226/list-of-variable-length-lists
         #queue used for both fifo and lru. It stores addresses.
         self.queue = lists = [[] for _ in range(numSets)]
@@ -34,7 +38,7 @@ class Cache:
         self.ram = ram.Ram(ramSize, blockSize)
         self.addrObj = addrObj
 
-        #counting info
+        #counting info init
         self.countingInfo = {}
         self.countingInfo["readHits"] = 0
         self.countingInfo["readMisses"] = 0
@@ -253,13 +257,6 @@ class Cache:
         tempAddr = self.queue[addrSetIndex][-1]
         self.queue[addrSetIndex][-1] = self.queue[addrSetIndex][index]
         self.queue[addrSetIndex][index] = tempAddr
-
-
-    def getCacheCountingInfo(self):
-        """returns the counting info parameter, left over from
-           the c++ implementation I tried at first
-        """
-        return self.countingInfo
 
 
     def printLru(self):

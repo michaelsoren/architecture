@@ -62,7 +62,7 @@ class Cpu:
         """
         ret = {}
         ret["instructionCount"] = self.instructionCount
-        cacheStats = self.cache.getCacheCountingInfo()
+        cacheStats = self.cache.countingInfo
         ret["readHits"] = cacheStats["readHits"]
         ret["readMisses"] = cacheStats["readMisses"]
         ret["writeHits"] = cacheStats["writeHits"]

@@ -3,8 +3,10 @@
 #NOTE: This file is written in cython for performance reasons.
 #      Most of these functions are straightforward math, which
 #      made converting to C wrapped in python a natural and relatively
-#      easy choice. The old address.py file is still left, if you want
+#      easy choice. The old address.py file is still in the project, if you want
 #      a general look at the origins prior to my attempt to increase performance.
+#      This change had a marked effect on performance, essentially doubling
+#      performance in most cases.
 
 from libc.math cimport log2
 from libc.math cimport ceil
