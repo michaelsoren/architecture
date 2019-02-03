@@ -11,6 +11,7 @@ class Datablock:
         """
         self.size = size
         self.data = np.zeros(size)
+        
         self.id = id
 
 

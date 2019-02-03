@@ -20,10 +20,10 @@ class Ram:
     def getBlock(self, addr):
         """Gets a block from ram. Which block depends on which block size.
         """
-        return self.data[addr.addr // self.blockSize]
+        return self.data[addr // self.blockSize]
 
     def setBlock(self, addr, value):
         """Sets a block from ram. Which block depends on block size.
         Value is a block.
         """
-        self.data[addr.addr // self.blockSize] = value
+        self.data[addr // self.blockSize] = value
